@@ -50,15 +50,19 @@ public class CarService {
     }
 
     public void deleteCar(Long id) {
-        carRepository.deleteById(id);
+        carRepository
+            .findById(id)
+            .ifPresent(car -> {
+                carRepository.delete(car);
+            });
     }
 
-    public Optional<Car> retriveCar(Long id) {
+    public Optional<Car> retrieveCar(Long id) {
         Optional<Car> car = carRepository.findById(id);
         return car;
     }
 
-    public List<Car> retriveAllCars() {
+    public List<Car> retrieveAllCars() {
         return carRepository.findAll();
     }
 
@@ -75,5 +79,52 @@ public class CarService {
         }
         Car carToEdit = carMapper.mapCarDTOtoCar(carDTO);
         return carRepository.save(carToEdit);
+    }
+
+    public Optional<Car> partialEditCar(CarDTO carDTO, Long id) {
+        if (carDTO.getId() == null) {
+            throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
+        }
+        if (!Objects.equals(id, carDTO.getId())) {
+            throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
+        }
+
+        if (!carRepository.existsById(id)) {
+            throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
+        }
+
+        Optional<Car> result = carRepository
+            .findById(carDTO.getId())
+            .map(existingCar -> {
+                if (carDTO.getManufacturer() != null) {
+                    existingCar.setManufacturer(carDTO.getManufacturer());
+                }
+                if (carDTO.getModel() != null) {
+                    existingCar.setModel(carDTO.getModel());
+                }
+                if (carDTO.getLicensePlate() != null) {
+                    existingCar.setLicensePlate(carDTO.getLicensePlate());
+                }
+                if (carDTO.getSeatCount() != null) {
+                    existingCar.setSeatCount(carDTO.getSeatCount());
+                }
+                if (carDTO.getConvertible() != null) {
+                    existingCar.setConvertible(carDTO.getConvertible());
+                }
+                if (carDTO.getRating() != null) {
+                    existingCar.setRating(carDTO.getRating());
+                }
+                if (carDTO.getEngineType() != null) {
+                    existingCar.setEngineType(carDTO.getEngineType());
+                }
+                if (carDTO.getAvaiable() != null) {
+                    existingCar.setAvaiable(carDTO.getAvaiable());
+                }
+
+                return existingCar;
+            })
+            .map(carRepository::save);
+
+        return result;
     }
 }

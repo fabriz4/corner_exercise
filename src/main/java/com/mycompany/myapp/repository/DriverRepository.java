@@ -13,7 +13,7 @@ import org.springframework.stereotype.Repository;
  * Spring Data JPA repository for the Driver entity.
  */
 @Repository
-public interface DriverRepository extends JpaRepository<Driver, Long> {
+public interface DriverRepository extends JpaRepository<Driver, Long>, DriverRepositoryCustom {
     default Optional<Driver> findOneWithEagerRelationships(Long id) {
         return this.findOneWithToOneRelationships(id);
     }

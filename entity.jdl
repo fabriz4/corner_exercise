@@ -1,0 +1,29 @@
+
+
+
+
+entity Car{
+
+manufacturer String required
+model String required
+licensePlate String required unique
+seatCount Integer min(1) max(9)
+convertible Boolean
+rating Integer
+engineType String
+avaiable Boolean
+}
+
+entity Driver{
+
+name String required
+surname String required
+driveLicenseId Long required unique
+expirationDate LocalDate required
+releaseDate LocalDate required
+}
+
+
+relationship OneToOne {
+Driver{ Car(licensePlate) } to Car
+}

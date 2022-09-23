@@ -37,14 +37,8 @@ public class CarResource {
     @Value("${jhipster.clientApp.name}")
     private String applicationName;
 
-    private final CarRepository carRepository;
-
     @Autowired
     CarService carService;
-
-    public CarResource(CarRepository carRepository) {
-        this.carRepository = carRepository;
-    }
 
     /**
      * {@code POST  /cars} : Create a new car.
@@ -100,55 +94,16 @@ public class CarResource {
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PatchMapping(value = "/cars/{id}", consumes = { "application/json", "application/merge-patch+json" })
-    public ResponseEntity<Car> partialUpdateCar(@PathVariable(value = "id", required = false) final Long id, @NotNull @RequestBody Car car)
-        throws URISyntaxException {
-        log.debug("REST request to partial update Car partially : {}, {}", id, car);
-        if (car.getId() == null) {
-            throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
-        }
-        if (!Objects.equals(id, car.getId())) {
-            throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
-        }
+    public ResponseEntity<Car> partialUpdateCar(
+        @PathVariable(value = "id", required = false) final Long id,
+        @NotNull @RequestBody CarDTO carDTO
+    ) throws URISyntaxException {
+        log.debug("REST request to partial update Car partially : {}, {}", id, carDTO);
 
-        if (!carRepository.existsById(id)) {
-            throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
-        }
-
-        Optional<Car> result = carRepository
-            .findById(car.getId())
-            .map(existingCar -> {
-                if (car.getManufacturer() != null) {
-                    existingCar.setManufacturer(car.getManufacturer());
-                }
-                if (car.getModel() != null) {
-                    existingCar.setModel(car.getModel());
-                }
-                if (car.getLicensePlate() != null) {
-                    existingCar.setLicensePlate(car.getLicensePlate());
-                }
-                if (car.getSeatCount() != null) {
-                    existingCar.setSeatCount(car.getSeatCount());
-                }
-                if (car.getConvertible() != null) {
-                    existingCar.setConvertible(car.getConvertible());
-                }
-                if (car.getRating() != null) {
-                    existingCar.setRating(car.getRating());
-                }
-                if (car.getEngineType() != null) {
-                    existingCar.setEngineType(car.getEngineType());
-                }
-                if (car.getAvaiable() != null) {
-                    existingCar.setAvaiable(car.getAvaiable());
-                }
-
-                return existingCar;
-            })
-            .map(carRepository::save);
-
+        Optional<Car> result = carService.partialEditCar(carDTO, id);
         return ResponseUtil.wrapOrNotFound(
             result,
-            HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, car.getId().toString())
+            HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, carDTO.getId().toString())
         );
     }
 
@@ -160,7 +115,8 @@ public class CarResource {
     @GetMapping("/cars")
     public List<Car> getAllCars() {
         log.debug("REST request to get all Cars");
-        return carService.retriveAllCars();
+
+        return carService.retrieveAllCars();
     }
 
     /**
@@ -172,7 +128,7 @@ public class CarResource {
     @GetMapping("/cars/{id}")
     public ResponseEntity<Car> getCar(@PathVariable Long id) {
         log.debug("REST request to get Car : {}", id);
-        Optional<Car> car = carService.retriveCar(id);
+        Optional<Car> car = carService.retrieveCar(id);
         return ResponseUtil.wrapOrNotFound(car);
     }
 

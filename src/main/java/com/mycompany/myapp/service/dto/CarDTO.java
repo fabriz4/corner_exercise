@@ -14,6 +14,15 @@ public class CarDTO implements Serializable {
     private Integer rating;
     private String engineType;
     private Boolean avaiable;
+    private Integer seatCount;
+
+    public Integer getSeatCount() {
+        return seatCount;
+    }
+
+    public void setSeatCount(Integer seatCount) {
+        this.seatCount = seatCount;
+    }
 
     public Long getId() {
         return id;

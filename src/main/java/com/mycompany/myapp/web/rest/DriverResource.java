@@ -2,6 +2,9 @@ package com.mycompany.myapp.web.rest;
 
 import com.mycompany.myapp.domain.Driver;
 import com.mycompany.myapp.repository.DriverRepository;
+import com.mycompany.myapp.service.DriverService;
+import com.mycompany.myapp.service.dto.DriverDTO;
+import com.mycompany.myapp.service.dto.DriverFilterDTO;
 import com.mycompany.myapp.web.rest.errors.BadRequestAlertException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -10,12 +13,15 @@ import java.util.Objects;
 import java.util.Optional;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
+import org.mapstruct.factory.Mappers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import tech.jhipster.web.util.HeaderUtil;
 import tech.jhipster.web.util.ResponseUtil;
 
@@ -34,11 +40,8 @@ public class DriverResource {
     @Value("${jhipster.clientApp.name}")
     private String applicationName;
 
-    private final DriverRepository driverRepository;
-
-    public DriverResource(DriverRepository driverRepository) {
-        this.driverRepository = driverRepository;
-    }
+    @Autowired
+    private DriverService driverService;
 
     /**
      * {@code POST  /drivers} : Create a new driver.
@@ -48,12 +51,11 @@ public class DriverResource {
      * @throws URISyntaxException if the Location URI syntax is incorrect.
      */
     @PostMapping("/drivers")
-    public ResponseEntity<Driver> createDriver(@Valid @RequestBody Driver driver) throws URISyntaxException {
-        log.debug("REST request to save Driver : {}", driver);
-        if (driver.getId() != null) {
-            throw new BadRequestAlertException("A new driver cannot already have an ID", ENTITY_NAME, "idexists");
-        }
-        Driver result = driverRepository.save(driver);
+    public ResponseEntity<Driver> createDriver(@Valid @RequestBody DriverDTO driverDTO) throws URISyntaxException {
+        log.debug("REST request to save Driver : {}", driverDTO);
+
+        Driver result = driverService.createDriver(driverDTO);
+
         return ResponseEntity
             .created(new URI("/api/drivers/" + result.getId()))
             .headers(HeaderUtil.createEntityCreationAlert(applicationName, true, ENTITY_NAME, result.getId().toString()))
@@ -73,24 +75,15 @@ public class DriverResource {
     @PutMapping("/drivers/{id}")
     public ResponseEntity<Driver> updateDriver(
         @PathVariable(value = "id", required = false) final Long id,
-        @Valid @RequestBody Driver driver
+        @Valid @RequestBody DriverDTO driverDTO
     ) throws URISyntaxException {
-        log.debug("REST request to update Driver : {}, {}", id, driver);
-        if (driver.getId() == null) {
-            throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
-        }
-        if (!Objects.equals(id, driver.getId())) {
-            throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
-        }
+        log.debug("REST request to update Driver : {}, {}", id, driverDTO);
 
-        if (!driverRepository.existsById(id)) {
-            throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
-        }
+        Driver result = driverService.editDriver(driverDTO, id);
 
-        Driver result = driverRepository.save(driver);
         return ResponseEntity
             .ok()
-            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, driver.getId().toString()))
+            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, driverDTO.getId().toString()))
             .body(result);
     }
 
@@ -108,46 +101,15 @@ public class DriverResource {
     @PatchMapping(value = "/drivers/{id}", consumes = { "application/json", "application/merge-patch+json" })
     public ResponseEntity<Driver> partialUpdateDriver(
         @PathVariable(value = "id", required = false) final Long id,
-        @NotNull @RequestBody Driver driver
+        @NotNull @RequestBody DriverDTO driverDTO
     ) throws URISyntaxException {
-        log.debug("REST request to partial update Driver partially : {}, {}", id, driver);
-        if (driver.getId() == null) {
-            throw new BadRequestAlertException("Invalid id", ENTITY_NAME, "idnull");
-        }
-        if (!Objects.equals(id, driver.getId())) {
-            throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
-        }
+        log.debug("REST request to partial update Driver partially : {}, {}", id, driverDTO);
 
-        if (!driverRepository.existsById(id)) {
-            throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
-        }
-
-        Optional<Driver> result = driverRepository
-            .findById(driver.getId())
-            .map(existingDriver -> {
-                if (driver.getName() != null) {
-                    existingDriver.setName(driver.getName());
-                }
-                if (driver.getSurname() != null) {
-                    existingDriver.setSurname(driver.getSurname());
-                }
-                if (driver.getDriveLicenseId() != null) {
-                    existingDriver.setDriveLicenseId(driver.getDriveLicenseId());
-                }
-                if (driver.getExpirationDate() != null) {
-                    existingDriver.setExpirationDate(driver.getExpirationDate());
-                }
-                if (driver.getReleaseDate() != null) {
-                    existingDriver.setReleaseDate(driver.getReleaseDate());
-                }
-
-                return existingDriver;
-            })
-            .map(driverRepository::save);
+        Optional<Driver> result = driverService.partialEditDriver(driverDTO, id);
 
         return ResponseUtil.wrapOrNotFound(
             result,
-            HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, driver.getId().toString())
+            HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, driverDTO.getId().toString())
         );
     }
 
@@ -160,11 +122,13 @@ public class DriverResource {
     @GetMapping("/drivers")
     public List<Driver> getAllDrivers(@RequestParam(required = false, defaultValue = "false") boolean eagerload) {
         log.debug("REST request to get all Drivers");
-        if (eagerload) {
-            return driverRepository.findAllWithEagerRelationships();
-        } else {
-            return driverRepository.findAll();
-        }
+
+        return driverService.retrieveAllDrivers(eagerload);
+    }
+
+    @GetMapping("/drivers/filter")
+    public List<Driver> getDriversByCriteria(@ModelAttribute("model") DriverFilterDTO driverFilterDTO) {
+        return driverService.retrieveDriversByCriteria(driverFilterDTO);
     }
 
     /**
@@ -176,7 +140,9 @@ public class DriverResource {
     @GetMapping("/drivers/{id}")
     public ResponseEntity<Driver> getDriver(@PathVariable Long id) {
         log.debug("REST request to get Driver : {}", id);
-        Optional<Driver> driver = driverRepository.findOneWithEagerRelationships(id);
+
+        Optional<Driver> driver = driverService.retrieveDriver(id);
+
         return ResponseUtil.wrapOrNotFound(driver);
     }
 
@@ -189,7 +155,9 @@ public class DriverResource {
     @DeleteMapping("/drivers/{id}")
     public ResponseEntity<Void> deleteDriver(@PathVariable Long id) {
         log.debug("REST request to delete Driver : {}", id);
-        driverRepository.deleteById(id);
+
+        driverService.deleteDriver(id);
+
         return ResponseEntity
             .noContent()
             .headers(HeaderUtil.createEntityDeletionAlert(applicationName, true, ENTITY_NAME, id.toString()))
